@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { GAMES, DIFFICULTY_LABELS, DIFFICULTY_BADGES } from "../data/games";
 import { ModeSelector } from "../components/ModeSelector";
@@ -26,8 +26,8 @@ export function GameDetail() {
   const [myResult, setMyResult] = useState<GameResult | null>(null);
   const [opponentResult, setOpponentResult] = useState<GameResult | null>(null);
   const [retryKey, setRetryKey] = useState(0);
+  const [excludeChallengeId, setExcludeChallengeId] = useState<string | null>(null);
   const { pickExcluding, pickDifferent } = useUsedChallenges();
-  const prevChallengeIdRef = useRef<string | null>(null);
 
   const parsed = gameId ? parseGameId(gameId) : null;
   const baseGameId = parsed?.baseGameId ?? "summary";
@@ -36,43 +36,29 @@ export function GameDetail() {
   const summaryChallenge = useMemo(() => {
     if (baseGameId !== "summary") return null;
     const pool = SUMMARY_CHALLENGES.filter((c) => c.difficulty === difficulty);
-    if (retryKey === 0) {
+    if (!excludeChallengeId) {
       return pickExcluding(pool);
     }
-    const excludeId = prevChallengeIdRef.current;
-    return excludeId
-      ? pickDifferent(pool, SUMMARY_CHALLENGES, excludeId)
-      : pickExcluding(pool);
-  }, [gameId, baseGameId, difficulty, retryKey, pickExcluding, pickDifferent]);
+    return pickDifferent(pool, SUMMARY_CHALLENGES, excludeChallengeId);
+  }, [gameId, baseGameId, difficulty, retryKey, excludeChallengeId, pickExcluding, pickDifferent]);
 
   const continueChallenge = useMemo(() => {
     if (baseGameId !== "continue") return null;
     const pool = STORY_CHALLENGES.filter((c) => c.difficulty === difficulty);
-    if (retryKey === 0) {
+    if (!excludeChallengeId) {
       return pickExcluding(pool);
     }
-    const excludeId = prevChallengeIdRef.current;
-    return excludeId
-      ? pickDifferent(pool, STORY_CHALLENGES, excludeId)
-      : pickExcluding(pool);
-  }, [gameId, baseGameId, difficulty, retryKey, pickExcluding, pickDifferent]);
+    return pickDifferent(pool, STORY_CHALLENGES, excludeChallengeId);
+  }, [gameId, baseGameId, difficulty, retryKey, excludeChallengeId, pickExcluding, pickDifferent]);
 
   const mazeChallenge = useMemo(() => {
     if (baseGameId !== "maze") return null;
     const pool = INSTRUCTION_CHALLENGES.filter((c) => c.difficulty === difficulty);
-    if (retryKey === 0) {
+    if (!excludeChallengeId) {
       return pickExcluding(pool);
     }
-    const excludeId = prevChallengeIdRef.current;
-    return excludeId
-      ? pickDifferent(pool, INSTRUCTION_CHALLENGES, excludeId)
-      : pickExcluding(pool);
-  }, [gameId, baseGameId, difficulty, retryKey, pickExcluding, pickDifferent]);
-
-  const currentChallenge = baseGameId === "summary" ? summaryChallenge : baseGameId === "continue" ? continueChallenge : mazeChallenge;
-  useEffect(() => {
-    if (currentChallenge) prevChallengeIdRef.current = currentChallenge.id;
-  }, [currentChallenge]);
+    return pickDifferent(pool, INSTRUCTION_CHALLENGES, excludeChallengeId);
+  }, [gameId, baseGameId, difficulty, retryKey, excludeChallengeId, pickExcluding, pickDifferent]);
 
   const game = GAMES.find((g) => g.id === gameId);
   const hasChallenge = baseGameId === "summary" ? summaryChallenge : baseGameId === "continue" ? continueChallenge : mazeChallenge;
@@ -99,9 +85,14 @@ export function GameDetail() {
   const handleRetry = () => {
     setMyResult(null);
     setOpponentResult(null);
+    setExcludeChallengeId(null);
     setRetryKey((k) => k + 1);
   };
-  const handleChangeProblem = () => setRetryKey((k) => k + 1);
+  const handleChangeProblem = () => {
+    const currentId = baseGameId === "summary" ? summaryChallenge?.id : baseGameId === "continue" ? continueChallenge?.id : mazeChallenge?.id;
+    if (currentId) setExcludeChallengeId(currentId);
+    setRetryKey((k) => k + 1);
+  };
 
   const isVersusComplete = mode === "versus" && myResult && opponentResult;
 
