@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { GAMES, DIFFICULTY_LABELS, DIFFICULTY_BADGES } from "../data/games";
 import { ModeSelector } from "../components/ModeSelector";
@@ -26,7 +26,7 @@ export function GameDetail() {
   const [myResult, setMyResult] = useState<GameResult | null>(null);
   const [opponentResult, setOpponentResult] = useState<GameResult | null>(null);
   const [retryKey, setRetryKey] = useState(0);
-  const [excludeChallengeId, setExcludeChallengeId] = useState<string | null>(null);
+  const excludeIdRef = useRef<string | null>(null);
   const { pickExcluding, pickDifferent } = useUsedChallenges();
 
   const parsed = gameId ? parseGameId(gameId) : null;
@@ -36,29 +36,39 @@ export function GameDetail() {
   const summaryChallenge = useMemo(() => {
     if (baseGameId !== "summary") return null;
     const pool = SUMMARY_CHALLENGES.filter((c) => c.difficulty === difficulty);
-    if (!excludeChallengeId) {
+    const excludeId = excludeIdRef.current;
+    if (!excludeId) {
       return pickExcluding(pool);
     }
-    return pickDifferent(pool, SUMMARY_CHALLENGES, excludeChallengeId);
-  }, [gameId, baseGameId, difficulty, retryKey, excludeChallengeId, pickExcluding, pickDifferent]);
+    excludeIdRef.current = null;
+    return pickDifferent(pool, SUMMARY_CHALLENGES, excludeId);
+  }, [gameId, baseGameId, difficulty, retryKey, pickExcluding, pickDifferent]);
 
   const continueChallenge = useMemo(() => {
     if (baseGameId !== "continue") return null;
     const pool = STORY_CHALLENGES.filter((c) => c.difficulty === difficulty);
-    if (!excludeChallengeId) {
+    const excludeId = excludeIdRef.current;
+    if (!excludeId) {
       return pickExcluding(pool);
     }
-    return pickDifferent(pool, STORY_CHALLENGES, excludeChallengeId);
-  }, [gameId, baseGameId, difficulty, retryKey, excludeChallengeId, pickExcluding, pickDifferent]);
+    excludeIdRef.current = null;
+    return pickDifferent(pool, STORY_CHALLENGES, excludeId);
+  }, [gameId, baseGameId, difficulty, retryKey, pickExcluding, pickDifferent]);
 
   const mazeChallenge = useMemo(() => {
     if (baseGameId !== "maze") return null;
     const pool = INSTRUCTION_CHALLENGES.filter((c) => c.difficulty === difficulty);
-    if (!excludeChallengeId) {
+    const excludeId = excludeIdRef.current;
+    if (!excludeId) {
       return pickExcluding(pool);
     }
-    return pickDifferent(pool, INSTRUCTION_CHALLENGES, excludeChallengeId);
-  }, [gameId, baseGameId, difficulty, retryKey, excludeChallengeId, pickExcluding, pickDifferent]);
+    excludeIdRef.current = null;
+    return pickDifferent(pool, INSTRUCTION_CHALLENGES, excludeId);
+  }, [gameId, baseGameId, difficulty, retryKey, pickExcluding, pickDifferent]);
+
+  useEffect(() => {
+    excludeIdRef.current = null;
+  }, [gameId]);
 
   const game = GAMES.find((g) => g.id === gameId);
   const hasChallenge = baseGameId === "summary" ? summaryChallenge : baseGameId === "continue" ? continueChallenge : mazeChallenge;
@@ -85,12 +95,12 @@ export function GameDetail() {
   const handleRetry = () => {
     setMyResult(null);
     setOpponentResult(null);
-    setExcludeChallengeId(null);
+    excludeIdRef.current = null;
     setRetryKey((k) => k + 1);
   };
   const handleChangeProblem = () => {
     const currentId = baseGameId === "summary" ? summaryChallenge?.id : baseGameId === "continue" ? continueChallenge?.id : mazeChallenge?.id;
-    if (currentId) setExcludeChallengeId(currentId);
+    if (currentId) excludeIdRef.current = currentId;
     setRetryKey((k) => k + 1);
   };
 
