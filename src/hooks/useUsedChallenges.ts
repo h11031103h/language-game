@@ -44,5 +44,17 @@ export function useUsedChallenges() {
     [markUsed]
   );
 
-  return { markUsed, getExcludedIds, pickExcluding };
+  /** 現在の問題を除外して別の問題を選ぶ（同難易度に1つしかない場合は他難易度から選ぶ） */
+  const pickDifferent = useCallback(
+    <T extends { id: string }>(itemsForDifficulty: T[], fullPool: T[], excludeId: string): T => {
+      const available = fullPool.filter((item) => item.id !== excludeId);
+      if (available.length === 0) return itemsForDifficulty[0];
+      const picked = available[Math.floor(Math.random() * available.length)];
+      markUsed(picked.id);
+      return picked;
+    },
+    [markUsed]
+  );
+
+  return { markUsed, getExcludedIds, pickExcluding, pickDifferent };
 }
